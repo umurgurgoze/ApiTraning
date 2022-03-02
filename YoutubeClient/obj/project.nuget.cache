@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "fb1nMzfiV1VxHJNmTewf+KF6PHTRRv1Ti+KceYJ5CyWeQUE0AcTqBX5aMSh6Tg/SNb75++7jzMCdTPcHXMNLvw==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\umurg\\Desktop\\YavuzSelim\\YoutubeWebApi\\YoutubeApi\\YoutubeClient\\YoutubeClient.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\umurg\\.nuget\\packages\\newtonsoft.json\\13.0.1\\newtonsoft.json.13.0.1.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -1,0 +1,229 @@
+1- WebApi Nedir ? 
+Uygulamadaki kaynakların belirlenmiş olan herhangi bir site tarafından kullanılabilmesini sağlar. Uygulama Geliştirme Arayüzü ( API ) .
+
+2- WebApi Temel Kaynaklar
+Json veri tipi formatında verileri verir.Bir objeye bind ederek bu objeyi kullanabiliriz.React vue gibi uygulamalar Apı'nin sunmuş olduğu verileri bind ederek gerekli işlemi yapıyor.
+Standart Crud işlemleri Apı üzerinde gerçekleştirilir. Amaç veri kaynağını bir noktaya taşımak.
+
+3- WebApi Class Yazmak
+
+Api' ler ControllerBase üzerinden katılsal olarak geçer. Mvc ise Controller üzerinden kalıtsal olarak geçer.
+Launchsetting.json dosyasına bakarak uygulama ayağa kalkar. Launchurl üzerindeki controller ve metot çalışır.
+Bir web sayfasına istek yaptığımızda istek başarılı olarak dönerse sunucudan 200 ok olarak döner ve dökümantasyonları gösterir.istemci sunucu mimarisi çalışır.
+Web APİ inşa ettiğimizdede bu mimari çalışır.
+
+GET (GETİRME) -> POST (EKLEME) -> PUT (GÜNCELLEME) ->  DELETE (SİLME) İSTEK ÇEŞİTLERİDİR.
+--> Controller isimleri Apı tarafında çoğul yazılır. Rest mimarisi özünde veriye anlamlı yaklaşmaktır. Api/Products dediğimizde ilgili ürünlerin gelmesi gerekir.
+
+İŞLEMLER : 
+
+1 - Entities klasörü içine Product ve YoutubeContext isminde classlar eklendi. Api içine Efcore,sqlserver,design,tools nuget paketleri yüklendi.
+
+2 - VERİ TABANI BAĞLANTISI İÇİN 2 YOL 
+
+    a)  public class YoutubeContext : DbContext
+    	{
+        public YoutubeContext(DbContextOptions<YoutubeContext> options) :base(options) [1.YOL CTOR TAB TAB]
+        {
+
+        }
+	public DbSet<Product> Products { get; set; }
+Service--> services.AddDbContext<YoutubeContext>(options =>
+            {
+                options.UseSqlServer("server=(localdb)\\MSSQLLocalDB; database = YoutubeApi;integrated security=true;user id = sa; password=***;");
+            });
+
+    b)  protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) [2.YOL OVERRIDE ON MODEL CONFIGURING]
+        {
+            optionsBuilder.UseSqlServer("");
+            base.OnConfiguring(optionsBuilder);
+        }
+        }
+3- Migration komutlarını uyguluyoruz.
+4- launchsettings.json : 
+ "profiles": {
+    "IIS Express": {
+  	"launchUrl": "api/Products",
+ "YoutubeApi": {
+  	"launchUrl": "api/Products",
+
+5- ProductsController isminde bir controller yarattık.
+
+*api/products/getproducts için [httpget("[action]")] yazmamız gerekiyor. Onun haricinde controller ismi route için temelde yeterli
+*Bir işlemi başarıyla döndürürsek 200 Ok dönmemiz gerekiyor.Bir güncelleme ve silme işlemi baraşıyla gerçekleştiyse No Content 204 döneriz.
+*Bir ekleme işleminde Created 201 dönmemiz gerekli.Bunlar kabul edilmiş best practiseler.
+
+  public class ProductsController : ControllerBase
+    {
+        private readonly YoutubeContext _context;
+        public ProductsController(YoutubeContext context)
+        {
+            _context = context;
+        }
+        //api/products/getproducts için [httpget("[action]")] yazmamız gerekiyor.
+        //Bir işlemi başarıyla döndürürsek 200 Ok dönmemiz gerekiyor.
+        //Bir güncelleme ve silme işlemi baraşıyla gerçekleştiyse No Content döneriz.
+        //Bir ekleme işleminde Created 201 dönmemiz gerekli.Bunlar kabul edilmiş best practiseler.
+        [HttpGet]
+        public IActionResult GetProducts()
+        {
+            return Ok(_context.Products.ToList());
+        }
+        //api/products?id=1 ==> Bu şekilde bir istek yapacaksak FromQuery yazabiliriz.
+        //api/products/1 ==> Bu şekilde istekte FromRoute yazarız.Bu şekilde gelecekse otomatik mapler yazmamıza gerek yok.
+                      //  ==> FromBody ise istek için gelen değerlerdir.
+        [HttpPut("{id}")]
+        public IActionResult UpdateProduct(int id, Product product)
+        {
+            var updatedProduct = _context.Products.FirstOrDefault(x => x.Id == id);
+                updatedProduct.Name = product.Name;
+            _context.SaveChanges();
+            return NoContent();
+        }
+        [HttpDelete("{id}")]
+        public IActionResult DeleteProduct(int id)
+        {
+            var deletedProduct = _context.Products.FirstOrDefault(x => x.Id == id);
+            _context.Remove(deletedProduct);
+            _context.SaveChanges();
+            return NoContent();
+        }
+        [HttpPost]
+        public IActionResult AddProduct(Product product)
+        {
+            _context.Add(product);
+            _context.SaveChanges();
+            return Created("", product);
+        }
+
+    }
+6- ID'YE GÖRE GET İŞLEMİ : 
+	//api/products/1 OLARAK GELDİĞİNİ ANLAR.ID DEĞERİNİN ROUTE DAN GELDİĞİNİ BİLİR.
+	[HttpGet("{id}")]
+        public IActionResult GetProductById(int id)
+        {
+            return Ok(_context.Products.FirstOrDefault(p => p.Id == id));
+        }
+
+	[HttpGet("[action]/{id}")] ==> Böyle de olabilir.Action ismini de isteyebiliriz.O zaman sorgusu (/api/products/getproductsbyid/1) olur.
+        public IActionResult GetProductById(int id)
+        {
+            return Ok(_context.Products.FirstOrDefault(p => p.Id == id));
+        }
+
+7-postman üzerinden kontrol
+
+post -> body/ raw / text:json içine yazıp send ediyoruz.
+put -> id değerini adrese ekleyip gerekli verileri yazıyoruz.
+
+8-API TÜKETMEK
+Mobil web ve masaüstü uygulaması api tüketebilir. Diğer uygulamaları bu api üzerinden besleriz. Hangisinin tüketebileceğini seçebiliriz.Bunun için bir mvc uygulaması oluşturuyoruz.
+
+endpoints.MapDefaultControllerRoute(); ve services.AddControllersWithViews(); ekliyoruz.
+
+MVC CONTROLLER:
+
+	public async Task<IActionResult> Index()
+        {
+            HttpClient client = new HttpClient();
+            var responseMessage = await client.GetAsync("https://localhost:44312/api/Products");
+            return View();
+        }
+
+	YA DA 
+	
+	public IActionResult Index()
+        {
+            HttpClient client = new HttpClient();
+            var responseMessage = client.GetAsync("https://localhost:44312/api/Products").Result;
+            List<Product> products = null;
+            if(responseMessage.StatusCode == System.Net.HttpStatusCode.OK)
+            {
+               products=JsonConvert.DeserializeObject<List<Product>>(responseMessage.Content.ReadAsStringAsync().Result); ==> Sonucu ele almak istersek bu şekilde de kullanabiliriz.
+            }
+            return View(products);
+        }
+
+9 - app.UseStaticFiles(); İLE WWWROOT ACTİVE EDİYORUZ. VE ADD CLİENT SIDE LİBRARY ÜZERİNDEN TWİTTER-BOOTSTRAP EKLİYORUZ.KULLANABİLMEK İÇİN BUNUN LİNKİNİ DE İNDEX SAYFAMIZA EKLEDİK.
+10 - EDİT DELETE İŞLEMLERİ.TAG HELPERLARI KULLANDIK. ADDTAGHELPER LİNKİNİ VİEWIMPORT İÇERİSİNE YAZARAK TEK SEFERDE YAZMAYI SAĞLADIK.
+
+<a asp-action="Edit" asp-controller="Home" asp-route-id="@item.Id" class="btn btn-warning btn-sm">Edit</a>
+                            <a onclick="return confirm('Silmek istediğinizden emin misiniz?')" asp-action="Delete" asp-controller="Home" asp-route-id="@item.Id" class=" btn btn-danger btn-sm">Delete</a>
+                            <a href="#">Delete</a>
+
+
+11- Controller içinde 
+
+	public IActionResult Index()
+        {
+            HttpClient client = new HttpClient();
+            var responseMessage = client.GetAsync("https://localhost:44312/api/Products").Result;
+            List<Product> products = null;
+            if(responseMessage.StatusCode == System.Net.HttpStatusCode.OK)
+            {
+               products=JsonConvert.DeserializeObject<List<Product>>(responseMessage.Content.ReadAsStringAsync().Result);
+            }
+            return View(products);
+        }
+        public IActionResult Add()
+        {
+            return View(new Product());
+        }
+        [HttpPost]
+        public IActionResult Add(Product product)
+        {
+            HttpClient httpClient = new HttpClient();
+            StringContent content = new StringContent(JsonConvert.SerializeObject(product),System.Text.Encoding.UTF8,"application/json");
+            var responseMessage = httpClient.PostAsync("https://localhost:44312/api/Products", content).Result;
+            if(responseMessage.StatusCode == System.Net.HttpStatusCode.Created)
+            {
+                return RedirectToAction("Index");
+            }
+            ModelState.AddModelError("", "Ekleme işlemi başarısız");
+            return View();
+        }        
+        public IActionResult Edit(int id)
+        {
+            HttpClient httpClient=new HttpClient();
+            var responseMessage = httpClient.GetAsync($"https://localhost:44312/api/Products/{id}").Result; // id ekleyebilmek için $ işareti koyduk(string interpolation)
+            if (responseMessage.StatusCode == System.Net.HttpStatusCode.OK)
+            {
+                var product = JsonConvert.DeserializeObject<Product>(responseMessage.Content.ReadAsStringAsync().Result);
+                return View(product);
+            }
+            return RedirectToAction("Index");
+        }
+        [HttpPost]
+        public IActionResult Edit(Product product)
+        {
+            HttpClient https = new HttpClient();    
+            StringContent content = new StringContent(JsonConvert.SerializeObject(product),System.Text.Encoding.UTF8,"application/json");
+            var responseMessage= https.PutAsync($"https://localhost:44312/api/Products/{product.Id}", content).Result;
+            return RedirectToAction("Index");
+        }
+        public IActionResult Delete(int id)
+        {
+            HttpClient httpClient = new HttpClient();
+            var responseMessage = httpClient.DeleteAsync($"https://localhost:44312/api/Products/{id}").Result;
+            return RedirectToAction("Index");
+        }
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
